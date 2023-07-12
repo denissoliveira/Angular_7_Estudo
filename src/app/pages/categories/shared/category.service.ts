@@ -1,15 +1,72 @@
 import { Injectable, Injector } from '@angular/core';
-import { Category } from "./category.model";
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 
-import { BaseResourceService } from "../../../shared/services/base-resource.service";
+import { Observable, throwError } from 'rxjs';
+import { map, catchError, flatMap } from 'rxjs/operators';
+
+import { Category } from "./category.model";
+import { element } from 'protractor';
 
 @Injectable({
   providedIn: 'root'
 })
-export class CategoryService extends BaseResourceService<Category> {
+export class CategoryService {
 
-  constructor(protected injector: Injector) {
-    super("api/categories", injector, Category.fromJson);
+  private apiPath: string = "api/categories";
+
+  constructor(private http: HttpClient) { }
+
+  getAll(): Observable<Category[]> {
+    return this.http.get(this.apiPath).pipe(
+      catchError(this.handleError),
+      map(this.jsonDataToCategories)
+    );
+  }
+
+  private jsonDataToCategories(jsonData: any): Category[] {
+    const categories: Category[] = [];
+    jsonData.forEach(element => categories.push(element as Category));
+    return categories;
+  }
+
+  getById(id: number): Observable<Category> {
+    const url = `${this.apiPath}/${id}`;
+    return this.http.get(url).pipe(
+      catchError(this.handleError),
+      map(this.jsonDataToCategory)
+    );
+  }
+
+  private jsonDataToCategory(jsonData: any): Category {
+    return jsonData as Category;
+  }
+
+  create(category: Category): Observable<Category> {
+    return this.http.post(this.apiPath, category).pipe(
+      catchError(this.handleError),
+      map(this.jsonDataToCategory)
+    );
+  }
+
+  update(category: Category): Observable<Category> {
+    const url = `${this.apiPath}/${category.id}`;
+    return this.http.put(url, category).pipe(
+      catchError(this.handleError),
+      map(() => category) //retornando ele mesmo pq o servidor de teste não retorna nada
+      ) 
+  }
+
+  delete(id: number): Observable<Category> {
+    const url = `${this.apiPath}/${id}`;
+    return this.http.delete(url).pipe(
+      catchError(this.handleError),
+      map(() => null)
+    )
+  }
+
+  private handleError(error: any): Observable<any> {
+    console.log("ERRO NA REQUISIÇÃO => ",error);
+    return throwError(error);
   }
 
 }
